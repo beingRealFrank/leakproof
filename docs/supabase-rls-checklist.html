@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supabase RLS checklist for apps built with Lovable, Bolt or Cursor — Leakproof</title>
+<meta name="description" content="Is your AI-built Supabase app leaking data? A 10-minute checklist: find tables without Row Level Security, allow-all policies, exposed service_role keys and public buckets, with the SQL to fix each.">
+<link rel="canonical" href="https://beingrealfrank.github.io/leakproof/supabase-rls-checklist.html">
+<style>
+  body { margin:0; font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; background:#fff; color:#1f2328; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 30px 22px 70px; }
+  a { color:#1a7f37; } code, pre { font-family: ui-monospace, Menlo, monospace; font-size: 14.5px; }
+  pre { background:#f6f8fa; border:1px solid #d0d7de; border-radius:8px; padding:12px 14px; overflow-x:auto; }
+  h1 { line-height:1.2; } h2 { margin-top: 42px; }
+  .cta { background:#f0fdf4; border:1px solid #1a7f3755; border-radius:10px; padding:16px 18px; margin: 36px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<p><a href="./">← Leakproof</a></p>
+<h1>The Supabase RLS checklist for AI-built apps</h1>
+<p>Lovable, Bolt, Cursor and v0 make Supabase apps fast. They also make it easy to ship a database anyone can read. Your frontend holds the <i>anon key</i>, and that's by design: anyone can see it. The only thing standing between that key and your users' data is Row Level Security. Here's how to check it in about ten minutes.</p>
+
+<h2>1. Find tables with RLS off</h2>
+<p>Run this in the Supabase SQL editor:</p>
+<pre>select schemaname, tablename
+from pg_tables
+where schemaname = 'public' and rowsecurity = false;</pre>
+<p>Every row returned is a table that the anon key can read and write through the REST API, whatever your UI shows. Fix:</p>
+<pre>alter table public.&lt;table&gt; enable row level security;</pre>
+<p>With RLS on and no policies, nobody can access the table (except your server using the service_role key). Now add only the access you need.</p>
+
+<h2>2. Find policies that let everyone in</h2>
+<pre>select tablename, policyname, cmd, roles, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and (qual = 'true' or with_check = 'true');</pre>
+<p><code>using (true)</code> on a <b>select</b> policy means "anyone can read every row", which is fine for a product catalog and a leak for anything per-user. On <b>insert/update/delete/all</b> it means anyone can change anyone's data. The usual fix is an ownership check:</p>
+<pre>drop policy "&lt;name&gt;" on public.todos;
+create policy "owners only" on public.todos for all to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);</pre>
+
+<h2>3. Prove it from the outside</h2>
+<p>Policies are easy to misread. Test with the same key an attacker has (your anon key, from your site's JS):</p>
+<pre>curl "https://&lt;project&gt;.supabase.co/rest/v1/&lt;table&gt;?select=*&amp;limit=5" \
+  -H "apikey: &lt;anon key&gt;"</pre>
+<p>Signed-out, this should return <code>[]</code> or an error for any private table. Then sign in as test user A and confirm you can't see user B's rows.</p>
+
+<h2>4. Make sure the service_role key never reaches the browser</h2>
+<p>The service_role key ignores RLS entirely. It must only live in server code (API routes, server actions, edge functions). Search your code for <code>SERVICE_ROLE</code> and check none of it is in a <code>'use client'</code> file, a <code>NEXT_PUBLIC_</code> / <code>VITE_</code> variable, or committed to git. If it ever was, rotate it.</p>
+
+<h2>5. Watch for the service_role shortcut in server actions</h2>
+<p>A common AI-generated pattern: a server action creates a service_role client "to make it work", then updates a row by id. RLS no longer applies, so any signed-in user can change any row by sending a different id. Use the user's own Supabase client in server code (so RLS applies), or add <code>.eq('user_id', user.id)</code> to every query.</p>
+
+<h2>6. Check storage buckets</h2>
+<pre>select id, public from storage.buckets;</pre>
+<p>A public bucket serves any file to anyone with its URL, with no policy check. Fine for avatars; not for invoices, uploads or exports. Make those private and use <code>createSignedUrl()</code>.</p>
+
+<h2>7. Check views and functions</h2>
+<p>Views run with their creator's permissions by default, so a view over a protected table can leak it. On Postgres 15+ use <code>create view ... with (security_invoker = true)</code>. Functions marked <code>security definer</code> also bypass RLS; make sure they check <code>auth.uid()</code> themselves.</p>
+
+<div class="cta">
+<b>Check your repo automatically.</b> Leakproof's free scanner reads your migrations and code and flags tables without RLS, allow-all policies, service_role keys in client code, public buckets and more. It runs locally:
+<pre style="margin:10px 0 6px">npx github:beingRealFrank/leakproof</pre>
+Want someone to go through all of this, plus your live project, and send fix PRs? <a href="./#pricing">See the fixed-price audits</a>.
+</div>
+</div></body></html>

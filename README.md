@@ -61,6 +61,10 @@ The findings appear in the job summary. Set `sarif: true` and add `github/codeql
 
 Pattern checks can't see your deployed configuration (Supabase dashboard settings, storage buckets, Vercel env), business-logic flaws (user A reading user B's order by changing an id), missing rate limits, or anything that needs the app running. A clean scan is a good start, not a clean bill of health.
 
+## Guides
+
+- [The Supabase RLS checklist for AI-built apps](https://beingrealfrank.github.io/leakproof/supabase-rls-checklist.html)
+
 ## Want a full audit?
 
 [Leakproof audits](https://beingrealfrank.github.io/leakproof/) go further for a fixed price: AI agents review the whole codebase and your
