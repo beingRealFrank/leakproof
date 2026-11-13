@@ -1,5 +1,5 @@
 name: 'Leakproof security scan'
-description: 'Find the security holes AI-built apps usually ship with: exposed keys, Supabase tables without RLS, open Firebase rules, unauthenticated server actions.'
+description: 'Find the security holes AI-built apps ship with: exposed keys, Supabase tables without RLS, open Firebase rules.'
 branding: { icon: 'shield', color: 'green' }
 inputs:
   path: { description: 'Directory to scan', default: '.' }
