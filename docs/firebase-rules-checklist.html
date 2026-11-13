@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firebase security rules checklist for apps built with Lovable, Bolt or Cursor — Leakproof</title>
+<meta name="description" content="Is your AI-built Firebase app open to anyone? A 10-minute checklist: test-mode rules, allow-if-true, missing ownership checks, Storage rules and admin keys in the browser, with the fix for each.">
+<link rel="canonical" href="https://beingrealfrank.github.io/leakproof/firebase-rules-checklist.html">
+<style>
+  body { margin:0; font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; background:#fff; color:#1f2328; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 30px 22px 70px; }
+  a { color:#1a7f37; } code, pre { font-family: ui-monospace, Menlo, monospace; font-size: 14.5px; }
+  pre { background:#f6f8fa; border:1px solid #d0d7de; border-radius:8px; padding:12px 14px; overflow-x:auto; }
+  h1 { line-height:1.2; } h2 { margin-top: 42px; }
+  .cta { background:#f0fdf4; border:1px solid #1a7f3755; border-radius:10px; padding:16px 18px; margin: 36px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<p><a href="./">← Leakproof</a></p>
+<h1>The Firebase security rules checklist for AI-built apps</h1>
+<p>Your Firebase web config, apiKey included, is public by design: it ships in your JavaScript and anyone can read it. The only thing between that config and your users' data is your security rules, and AI tools often leave them in test mode or loosen them until the app "works". Here's how to check them in about ten minutes.</p>
+
+<h2>1. Find test-mode and allow-all rules</h2>
+<p>From your project folder:</p>
+<pre>grep -nE "if true|request.time &lt;|\"\.(read|write)\": *true" firestore.rules storage.rules database.rules.json</pre>
+<p>Any hit is an open door. <code>allow read, write: if request.time &lt; timestamp.date(...)</code> is the default test-mode rule: everything is public until that date, and when it passes the app breaks and someone "fixes" it with <code>if true</code>.</p>
+
+<h2>2. "Signed in" is not "allowed"</h2>
+<p><code>allow read, write: if request.auth != null;</code> lets every user who signs up read and change every other user's documents. Tie each document to its owner:</p>
+<pre>match /users/{userId}/{document=**} {
+  allow read, write: if request.auth != null &amp;&amp; request.auth.uid == userId;
+}</pre>
+<p>Where the owner is a field, check it on both sides: <code>resource.data.ownerId == request.auth.uid</code> for reads and updates, and <code>request.resource.data.ownerId == request.auth.uid</code> for creates.</p>
+
+<h2>3. Lock the fields users must not change</h2>
+<p>If users can update their own profile document, they can also set <code>role: "admin"</code> or <code>credits: 999999</code> on it unless your rules forbid it:</p>
+<pre>allow update: if request.auth.uid == userId
+  &amp;&amp; !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'credits']);</pre>
+
+<h2>4. Check the Realtime Database too</h2>
+<p>If you use it, <code>database.rules.json</code> with <code>".read": true</code> or <code>".write": true</code> at the root opens the whole database. Scope it per user:</p>
+<pre>{
+  "rules": {
+    "users": {
+      "$uid": { ".read": "$uid === auth.uid", ".write": "$uid === auth.uid" }
+    }
+  }
+}</pre>
+
+<h2>5. Check Storage rules</h2>
+<p>Storage has its own rules file, and AI tools often leave it wide open. Scope uploads to the user's own folder and limit size and type:</p>
+<pre>match /b/{bucket}/o {
+  match /uploads/{userId}/{fileName} {
+    allow read: if request.auth != null &amp;&amp; request.auth.uid == userId;
+    allow write: if request.auth != null &amp;&amp; request.auth.uid == userId
+      &amp;&amp; request.resource.size &lt; 5 * 1024 * 1024
+      &amp;&amp; request.resource.contentType.matches('image/.*');
+  }
+}</pre>
+
+<h2>6. Keep admin credentials out of the browser and the repo</h2>
+<p>The web config is fine to ship. A service-account key (a JSON file with <code>"type": "service_account"</code> and a <code>private_key</code>) is not: it bypasses every rule. It belongs only on a server or in Cloud Functions. Check your history too:</p>
+<pre>git log --all --oneline -S '"private_key"'</pre>
+<p>If that prints anything, delete the key in the Google Cloud console (IAM → Service accounts → Keys) and create a new one. Removing the file from the repo is not enough.</p>
+
+<h2>7. Prove it from the outside</h2>
+<p>Signed out, a private collection must refuse to list:</p>
+<pre>curl "https://firestore.googleapis.com/v1/projects/&lt;project-id&gt;/databases/(default)/documents/&lt;collection&gt;?pageSize=5"</pre>
+<p>You want <code>403 PERMISSION_DENIED</code>. If you get documents back, anyone on the internet can too. The Rules Playground in the Firebase console lets you test signed-in cases, such as user A reading user B's document.</p>
+
+<div class="cta">
+<b>Check your repo automatically.</b> Leakproof's free scanner flags Firebase rules left in test mode or set to <code>if true</code>, admin keys in client code, secrets in public env vars and more. It runs locally:
+<pre style="margin:10px 0 6px">npx github:beingRealFrank/leakproof</pre>
+Want someone to go through all of this, plus your live project, and send fix PRs? <a href="./#pricing">See the fixed-price audits</a>.
+</div>
+<p>More checklists: <a href="supabase-rls-checklist.html">Supabase RLS</a> · <a href="public-env-secrets-checklist.html">Secret keys in your frontend</a></p>
+</div></body></html>
