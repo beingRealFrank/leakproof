@@ -40,12 +40,14 @@ test('vulnerable vibe-coded app: every planted hole is found', async () => {
     'lib/me.ts': `import jwt from 'jsonwebtoken'\nexport const me = (t) => jwt.decode(t).sub\n`,
     'server.js': `app.use(cors({ origin: true, credentials: true }))\n`,
     'config.js': `export const key = '${serviceJwt}'\n`,
+    'app/api/suggest/route.ts': `import { auth } from '@/auth'\nexport async function POST(req) { await auth(); const r = await openai.chat.completions.create({ model: 'x', messages: [] }); return Response.json(r) }\n`,
+    'supabase/migrations/002_storage.sql': `insert into storage.buckets (id, name, public) values ('invoices', 'invoices', true);\n`,
   });
   const r = await scan(root, { network: false });
   const got = rulesOf(r);
   for (const want of ['LP001:.env.local', 'LP002:config.js', 'LP002:lib/pay.ts', 'LP004:supabase/migrations/001_init.sql',
     'LP005:supabase/migrations/001_init.sql', 'LP006:firestore.rules', 'LP007:components/Admin.tsx', 'LP008:lib/search.ts',
-    'LP009:components/Admin.tsx', 'LP010:lib/me.ts', 'LP011:app/api/todos/route.ts', 'LP011:app/actions.ts', 'LP012:server.js']) {
+    'LP009:components/Admin.tsx', 'LP010:lib/me.ts', 'LP011:app/api/todos/route.ts', 'LP011:app/actions.ts', 'LP012:server.js', 'LP013:app/api/suggest/route.ts', 'LP014:supabase/migrations/002_storage.sql']) {
     assert.ok(got.includes(want), `missing ${want}; got ${got.join(', ')}`);
   }
   // .env.local is not committed, so its service-role key is not a "committed secret" (LP002/LP003)
@@ -75,6 +77,8 @@ test('well-built app: no findings', async () => {
     'components/Ld.tsx': `export const Ld = (d) => <script dangerouslySetInnerHTML={{ __html: JSON.stringify(d) }} />\n`,
     'components/Token.tsx': `'use client'\nimport { jwtDecode } from 'jwt-decode'\nexport const exp = (t) => jwtDecode(t).exp\n`,
     'firestore.rules': `allow read, write: if request.auth != null && request.auth.uid == userId;\n`,
+    'app/api/suggest/route.ts': `import { ratelimit } from '@/lib/rl'\nexport async function POST(req) { await ratelimit.limit(ip); return Response.json(await openai.chat.completions.create({})) }\n`,
+    'supabase/migrations/002.sql': `insert into storage.buckets (id, name, public) values ('avatars', 'avatars', false);\n`,
   });
   const r = await scan(root, { network: false });
   assert.deepEqual(rulesOf(r), []);

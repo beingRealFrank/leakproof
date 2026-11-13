@@ -1,6 +1,6 @@
 {
   "name": "leakproof",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Find the security holes AI-built (vibe-coded) apps usually ship with: exposed keys, Supabase tables without RLS, open Firebase rules, unauthenticated server actions.",
   "type": "module",
   "bin": { "leakproof": "bin/leakproof.js" },

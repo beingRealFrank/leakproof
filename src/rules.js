@@ -330,6 +330,49 @@ export const rules = [
       return out;
     },
   },
+  {
+    id: 'LP013',
+    title: 'AI endpoint with no rate limit',
+    project: true,
+    checkProject(files) {
+      const RL = /@upstash\/ratelimit|express-rate-limit|rate-limiter-flexible|@arcjet|slowapi|flask[_-]limiter|django-ratelimit|\bratelimit\b|\brateLimit\b|\brate_limit\b|\blimiter\b/i;
+      if (files.some((f) => RL.test(f.text))) return []; // some rate limiting exists; can't tell coverage statically
+      const LLM = /\.chat\.completions\.create\s*\(|\.messages\.create\s*\(|\.responses\.create\s*\(|\b(?:generateText|streamText|generateObject|streamObject)\s*\(|\.generateContent\s*\(/;
+      const out = [];
+      for (const { path, text } of files) {
+        if (!isJsLike(path) && !/\.py$/.test(path)) continue;
+        if (isExampleFile(path)) continue;
+        const endpoint = /(^|\/)app\/.*\/route\.(m?[jt]s)$/.test(path) || /(^|\/)pages\/api\//.test(path) || /^\s*['"]use server['"]/m.test(text)
+          || /(^|\/)(supabase\/functions|netlify\/functions|api)\//.test(path) || /@app\.(post|get)\(|@router\.(post|get)\(/.test(text);
+        if (!endpoint) continue;
+        const m = LLM.exec(text);
+        if (!m) continue;
+        if (/apiKey\s*:\s*(?:profile|user|body|req|settings|custom|userKey|byok)|(?:profile|user|settings)\.\w*api_?key/i.test(text)) continue; // users bring their own key
+        out.push({ severity: 'medium', file: path, line: lineOf(text, m.index), evidence: snippet(text, m.index),
+          detail: 'This endpoint calls a paid AI model and the project has no rate limiting anywhere. One script looping on it can run up a large bill or exhaust your quota.',
+          fix: 'Add a per-user/IP limit, e.g. @upstash/ratelimit (Ratelimit.slidingWindow(10, "1 m")) at the top of the handler, and set a hard monthly spend cap with your AI provider.' });
+      }
+      return out;
+    },
+  },
+  {
+    id: 'LP014',
+    title: 'Public Supabase storage bucket',
+    check(path, text) {
+      if (!/\.sql$/.test(path)) return [];
+      const out = [];
+      for (const m of text.matchAll(/insert\s+into\s+storage\.buckets\s*\(([^)]*)\)\s*values\s*\(([^)]*)\)/gi)) {
+        const cols = m[1].split(',').map((s) => s.trim().replace(/"/g, ''));
+        const vals = m[2].split(',').map((s) => s.trim());
+        const i = cols.indexOf('public');
+        if (i === -1 || !/^true$/i.test(vals[i] || '')) continue;
+        out.push({ severity: 'low', line: lineOf(text, m.index), evidence: snippet(text, m.index),
+          detail: `Bucket ${vals[cols.indexOf('id')] || vals[0]} is public: anyone with (or guessing) a file URL can download it, with no policy check. Fine for avatars and marketing images, a leak for invoices, uploads or exports.`,
+          fix: 'Make the bucket private and serve files with createSignedUrl(), unless everything in it is meant to be public.' });
+      }
+      return out;
+    },
+  },
 ];
 
 function dedupeByEvidence(list) {

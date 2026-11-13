@@ -25,6 +25,8 @@ is a lookup of your dependency names and versions on [OSV.dev](https://osv.dev) 
 | LP010 | JWTs decoded without signature verification | Forged logins |
 | LP011 | API routes / server actions that write data but never check the caller | Anyone can call them with curl |
 | LP012 | CORS `*` with credentials | Other sites act as your users |
+| LP013 | AI endpoints (OpenAI, Anthropic, AI SDK) with no rate limiting anywhere | One looping script = a huge bill |
+| LP014 | Public Supabase storage buckets | Uploaded files readable by URL |
 | LP020 | Dependencies with published advisories (OSV) | Known exploits |
 
 It is tuned for few false positives: on popular open-source Next.js + Supabase starters it reports only a handful of low-severity notes.
