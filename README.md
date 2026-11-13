@@ -71,6 +71,10 @@ Pattern checks can't see your deployed configuration (Supabase dashboard setting
 live Supabase/Firebase config (with your permission, read-only), every finding is reproduced and reviewed by a human,
 and you get a written report plus pull requests that fix what was found.
 
+## How this is made
+
+Leakproof is built and maintained with AI coding agents, and issues and pull requests here are triaged with AI help.
+
 ## License
 
 MIT
