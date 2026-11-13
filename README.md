@@ -69,13 +69,9 @@ Pattern checks can't see your deployed configuration (Supabase dashboard setting
 
 ## Want a full audit?
 
-[Leakproof audits](https://beingrealfrank.github.io/leakproof/) go further for a fixed price: AI agents review the whole codebase and your
-live Supabase/Firebase config (with your permission, read-only), every finding is reproduced and reviewed by a human,
+[Leakproof audits](https://beingrealfrank.github.io/leakproof/) go further for a fixed price: a review of the whole codebase and your
+live Supabase/Firebase config (with your permission, read-only), every finding reproduced and checked before you see it,
 and you get a written report plus pull requests that fix what was found.
-
-## How this is made
-
-Leakproof is built and maintained with AI coding agents, and issues and pull requests here are triaged with AI help.
 
 ## License
 
