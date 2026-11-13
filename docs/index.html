@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leakproof — security audits for AI-built apps (Lovable, Bolt, Cursor, v0)</title>
+<meta name="description" content="Fixed-price security audits for apps built with AI: exposed keys, Supabase RLS, Firebase rules, unauthenticated endpoints. Human-verified findings plus pull requests that fix them. Free open-source scanner.">
+<meta property="og:title" content="Leakproof — security audits for AI-built apps">
+<meta property="og:description" content="Your AI built the app. Who checked the locks? Free scanner, or a fixed-price audit with fix PRs.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --muted:#9da7b3; --accent:#3fb950; --warn:#f0883e; --crit:#f85149; }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; background:var(--bg); color:var(--text); }
+  a { color: var(--accent); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px; }
+  header { padding: 22px 0; display:flex; justify-content:space-between; align-items:center; }
+  header b { font-size: 20px; letter-spacing: .3px; }
+  header nav a { color: var(--muted); margin-left: 18px; text-decoration: none; font-size: 15px; }
+  .hero { padding: 56px 0 30px; }
+  h1 { font-size: clamp(32px, 5vw, 50px); line-height: 1.12; margin: 0 0 18px; }
+  h2 { font-size: 28px; margin: 64px 0 14px; }
+  .lead { font-size: 20px; color: var(--muted); max-width: 720px; }
+  pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .cmd { background: var(--panel); border:1px solid var(--line); border-radius: 10px; padding: 16px 18px; font-size: 17px; display:flex; justify-content:space-between; align-items:center; gap:12px; max-width: 560px; }
+  .cmd button { background: transparent; color: var(--muted); border:1px solid var(--line); border-radius:6px; padding: 4px 10px; cursor:pointer; }
+  .btn { display:inline-block; background: var(--accent); color:#04130a; font-weight:700; padding: 13px 22px; border-radius: 9px; text-decoration:none; }
+  .btn.ghost { background: transparent; color: var(--text); border:1px solid var(--line); font-weight:600; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; margin-top: 22px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border:1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+  .tag { font-size: 12px; font-weight:700; border-radius: 4px; padding: 2px 7px; margin-right: 6px; vertical-align: 2px; }
+  .crit { background: #3d1214; color: var(--crit); } .high { background:#3a2310; color: var(--warn); }
+  .price { font-size: 40px; font-weight: 800; margin: 6px 0 2px; }
+  .price small { font-size: 16px; color: var(--muted); font-weight: 500; }
+  .plan ul { padding-left: 20px; color: var(--muted); font-size: 15.5px; margin: 14px 0 18px; }
+  .plan.featured { border-color: var(--accent); }
+  ol.steps { padding-left: 22px; } ol.steps li { margin-bottom: 10px; }
+  .note { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--muted); }
+  details { border-bottom: 1px solid var(--line); padding: 14px 0; } summary { cursor: pointer; font-weight: 600; }
+  details p { color: var(--muted); margin: 10px 0 0; }
+  @media (max-width: 640px) { header nav a:not(:nth-child(2)) { display:none; } }
+  footer { margin: 80px 0 40px; color: var(--muted); font-size: 14px; border-top:1px solid var(--line); padding-top: 22px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><b>🛡️ Leakproof</b><nav><a href="#scanner">Free scanner</a><a href="#pricing">Audits</a><a href="sample-report.html">Sample report</a><a href="#faq">FAQ</a></nav></header>
+
+<section class="hero">
+  <h1>Your AI built the app.<br>Who checked the locks?</h1>
+  <p class="lead">Apps built with Lovable, Bolt, Cursor, v0 and Replit ship fast, and they ship the same security holes: keys in the browser, Supabase tables anyone can read, server actions anyone can call. Leakproof finds them and sends you the pull requests that fix them, for a fixed price.</p>
+  <div class="row"><a class="btn" href="#pricing">Get an audit</a><a class="btn ghost" href="#scanner">Run the free scanner</a></div>
+</section>
+
+<h2>The holes AI-built apps keep shipping</h2>
+<div class="grid">
+  <div class="card"><h3><span class="tag crit">CRITICAL</span>Tables without RLS</h3><p>A Supabase table created without Row Level Security can be read and rewritten by anyone holding the anon key, and that key is in your frontend.</p></div>
+  <div class="card"><h3><span class="tag crit">CRITICAL</span>Secret keys in the bundle</h3><p><code>NEXT_PUBLIC_OPENAI_API_KEY</code>, <code>VITE_STRIPE_SECRET</code>: anything with a public prefix is shipped to every visitor. Someone else then pays your AI bill.</p></div>
+  <div class="card"><h3><span class="tag crit">CRITICAL</span>Allow-all rules</h3><p><code>using (true)</code> policies and Firebase <code>if true</code> rules look like security but let everyone in.</p></div>
+  <div class="card"><h3><span class="tag high">HIGH</span>Endpoints that trust everyone</h3><p>Server actions and API routes are public URLs. If they don't check who's calling and whether the record is theirs, anyone can curl them.</p></div>
+  <div class="card"><h3><span class="tag high">HIGH</span>User A sees user B's data</h3><p>Change an id in the URL, get someone else's invoice. Insecure direct object references are the most common logic hole in generated CRUD code.</p></div>
+  <div class="card"><h3><span class="tag high">HIGH</span>No rate limits</h3><p>Unthrottled sign-up, password reset and AI endpoints become an open relay for spam and a surprise bill.</p></div>
+</div>
+
+<h2 id="scanner">Free scanner: one command, nothing to install</h2>
+<p>Open source, runs locally, and your code never leaves your machine. It catches the mechanical holes above in seconds.</p>
+<div class="cmd"><code id="c">npx github:beingRealFrank/leakproof</code><button onclick="navigator.clipboard.writeText(document.getElementById('c').textContent);this.textContent='Copied'">Copy</button></div>
+<p style="color:var(--muted);font-size:15px">Also as a GitHub Action that runs on every pull request. <a href="https://github.com/beingRealFrank/leakproof">Source and docs on GitHub</a>.</p>
+<p class="note">A scanner can't see your live database settings, your business logic, or whether user A can read user B's records. That's what the audit is for.</p>
+
+<h2 id="pricing">Fixed-price audits</h2>
+<div class="grid">
+  <div class="card plan">
+    <h3>Quick Audit</h3>
+    <div class="price">$149 <small>one-time</small></div>
+    <p>For a pre-launch sanity check.</p>
+    <ul>
+      <li>Full read of your repo by our review agents, beyond the free scanner's patterns</li>
+      <li>Every finding reproduced and checked by a human before you see it</li>
+      <li>Written report: what's wrong, how bad, how to fix it, in priority order</li>
+      <li>Delivered within 3 business days</li>
+    </ul>
+    <a class="btn ghost" href="#request">Request a Quick Audit</a>
+  </div>
+  <div class="card plan featured">
+    <h3>Audit + Fix PRs</h3>
+    <div class="price">$499 <small>one-time, up to ~30k lines</small></div>
+    <p>For apps with real users or real money.</p>
+    <ul>
+      <li>Everything in Quick Audit</li>
+      <li>Read-only review of your live Supabase / Firebase policies and storage buckets</li>
+      <li>Access-control testing against a staging deployment you point us to</li>
+      <li>A proof of concept for each serious finding</li>
+      <li>Pull requests that fix the findings and pass your CI</li>
+      <li>One free re-check after you merge</li>
+    </ul>
+    <a class="btn" href="#request">Request Audit + Fix PRs</a>
+  </div>
+</div>
+<p style="color:var(--muted);font-size:15px">Bigger codebase or a deadline? Ask for a quote. You pay only after we've confirmed the scope and price in writing.</p>
+
+<h2 id="request">How it works</h2>
+<ol class="steps">
+  <li><b>Tell us about the app</b> with the request form: stack, repo size, what you want checked. <span id="formlink"></span></li>
+  <li><b>We confirm scope and price</b> in writing within one business day. Nothing is tested until you agree.</li>
+  <li><b>You grant read-only access</b>: invite a GitHub collaborator with read access (or send a zip), and optionally a staging URL and test accounts.</li>
+  <li><b>You get the report</b> and, for Audit + Fix PRs, pull requests against your repo. You merge what you want.</li>
+</ol>
+
+<h2>How the work is done, plainly</h2>
+<p>AI agents do most of the reading, testing and fix-writing; that's why it's fast and affordable. A human, Frank Gilroy, reviews every finding and every pull request before it reaches you, and anything an agent can't reproduce doesn't go in your report. We only test systems you own and authorize, only against staging or read-only, and never modify or delete your data.</p>
+
+<h2 id="faq">FAQ</h2>
+<details><summary>Is this a penetration test or a compliance certificate?</summary><p>No. It's a focused code-and-configuration audit for the holes AI-built apps actually have. If you need a SOC 2 or a formal pentest letter, we're not that.</p></details>
+<details><summary>What stacks do you cover?</summary><p>Best on JavaScript/TypeScript (Next.js, React + Vite, Remix, SvelteKit, Express) with Supabase, Firebase, Prisma or Drizzle, and on Python (FastAPI, Flask, Django). Ask if you're on something else.</p></details>
+<details><summary>What happens to my code?</summary><p>It's used only for your audit and deleted when the engagement ends. Our access is read-only; we remove ourselves as a collaborator when done.</p></details>
+<details><summary>What if you find nothing?</summary><p>Then you get a report that says so, listing exactly what was checked, which is useful in its own right for investors, customers and your own sleep.</p></details>
+
+<footer>Leakproof is run by Frank Gilroy. The free scanner is MIT-licensed. Found a bug in the scanner? <a href="https://github.com/beingRealFrank/leakproof/issues">Open an issue</a>.</footer>
+</div>
+<script>
+  // Request form URL is set at deploy time.
+  const FORM = '';
+  const el = document.getElementById('formlink');
+  if (FORM) { el.innerHTML = '<a class="btn" style="margin-left:8px;padding:6px 14px;font-size:15px" href="' + FORM + '">Open the request form</a>'; document.querySelectorAll('a[href="#request"]').forEach(a => a.href = FORM); }
+</script>
+</body>
+</html>

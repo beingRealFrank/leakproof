@@ -1,0 +1,16 @@
+name: 'Leakproof security scan'
+description: 'Find the security holes AI-built apps usually ship with: exposed keys, Supabase tables without RLS, open Firebase rules, unauthenticated server actions.'
+branding: { icon: 'shield', color: 'green' }
+inputs:
+  path: { description: 'Directory to scan', default: '.' }
+  fail-on: { description: 'Fail the job at this severity or worse: critical, high, medium, low, never', default: 'high' }
+  sarif: { description: 'Also write leakproof.sarif for GitHub code scanning upload', default: 'false' }
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        node "${{ github.action_path }}/bin/leakproof.js" "${{ inputs.path }}" --format md --out leakproof.md --fail-on never
+        cat leakproof.md >> "$GITHUB_STEP_SUMMARY"
+        if [ "${{ inputs.sarif }}" = "true" ]; then node "${{ github.action_path }}/bin/leakproof.js" "${{ inputs.path }}" --format sarif --out leakproof.sarif --fail-on never; fi
+        node "${{ github.action_path }}/bin/leakproof.js" "${{ inputs.path }}" --fail-on "${{ inputs.fail-on }}" > /dev/null
